@@ -3,49 +3,51 @@ import { VerifyBodyDTO } from './dto/veirfy-body.dto';
 
 @Controller('verify')
 export class VerifyController {
+  passwordVerification = {
+    minSize(str: string, number: number) {
+      return str.length < number;
+    },
+    minUppercase(str: string, number: number) {
+      const upperCases = str.replace(/[^A-Z]/g, '');
+      return upperCases.length < number;
+    },
+    minLowercase(str: string, number: number) {
+      const lowerCases = str.replace(/[^a-z]/g, '');
+      return lowerCases.length < number;
+    },
+    minDigit(str: string, number: number) {
+      const digits = str.replace(/[^0-9]/g, '');
+
+      return digits.length < number;
+    },
+    minSpecialChars(str: string, number: number) {
+      const specialChars = str.replace(/[A-Za-z0-9]/g, '');
+      console.log(specialChars);
+      return specialChars.length < number;
+    },
+    noRepeted(str: string) {
+      const chars = str.split('');
+      const hasRepeatedChar = !!chars.find(
+        (char, index) => char === chars.at(index + 1),
+      );
+      return hasRepeatedChar;
+    },
+  };
   @Post()
-  post(@Body() { password, rules }: VerifyBodyDTO) {
-    const noMatch = rules.map((item) => {
-      if (item.rule === 'minSize' && password.length < item.value) {
-        return 'minSize';
-      }
+  post(@Body() { password, rules }: VerifyBodyDTO): {
+    verify: boolean;
+    noMatch: Array<string>;
+  } {
+    const errors = rules.map((item) => {
       if (
-        item.rule == 'minUppercase' &&
-        password.replace(/[^A-Z]/g, '').length < item.value
+        this.passwordVerification[item.rule] &&
+        this.passwordVerification[item.rule](password, item.value)
       ) {
-        return 'minUppercase';
-      }
-      if (
-        item.rule == 'minLowercase' &&
-        password.replace(/[^a-z]/g, '').length < item.value
-      ) {
-        return 'minLowercase';
-      }
-      if (
-        item.rule == 'minDigit' &&
-        password.replace(/[^0-9]/g, '').length < item.value
-      ) {
-        return 'minDigit';
-      }
-      if (
-        item.rule == 'minSpecialChars' &&
-        password.replace(/[`!@#$%^&*()_+-=[]{};':"\|,.<>?~]/g, '').length <
-          item.value
-      ) {
-        return 'minSpecialChars';
-      }
-      if (item.rule == 'noRepeted') {
-        const chars = password.split('');
-        const hasRepeatedChar = !!chars.find(
-          (char, index) => char === chars.at(index + 1),
-        );
-        if (hasRepeatedChar) return 'noRepeted';
+        return item.rule;
       }
     });
+    const noMatch = errors.filter((item: string) => !!item);
 
-    return {
-      verfiy: noMatch.length == 0,
-      noMatch,
-    };
+    return { noMatch, verify: noMatch.length === 0 };
   }
 }
